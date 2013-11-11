@@ -82,16 +82,6 @@ public class TheGame extends GameThread{
 	@Override
 	protected void updateGame(float secondsElapsed) {
 		
-		//if ball reaches canvas edge, bounce ball in opposite direction at realistic angles
-		// declaring a local variable to reduce number of calculations
-		int mBallHalfWidth = mBall.getWidth()/2;
-		//bounce off top or bottom edges detection
-		//(reverse Y direction only, keep X direction same to achieve realistic bounce angles
-		if ((mBallY <= mBallHalfWidth) || (mBallY >= (mCanvasHeight-mBallHalfWidth))) mBallSpeedY = -mBallSpeedY;
-		//bounce off right or left edges detection
-		//reverse X direction only, keep Y direction same to achieve realistic bounce angles
-		if ((mBallX >= (mCanvasWidth-mBallHalfWidth) || (mBallX <= mBallHalfWidth))) mBallSpeedX = -mBallSpeedX;
-
 		//Move the ball's X and Y using the speed (pixel/sec)
 		mBallX = mBallX + secondsElapsed * mBallSpeedX;
 		mBallY = mBallY + secondsElapsed * mBallSpeedY;
