@@ -16,7 +16,14 @@ public class TheGame extends GameThread{
 	
 	//The speed (pixel/second) of the ball in direction X and Y
 	private float mBallSpeedX = 0;
-	private float mBallSpeedY = 0;
+	private float mBallSpeedY = -50;
+	
+	//Setup variables for paddle image and it's X movement
+	private Bitmap mPaddle;
+	private float mPaddleX = 0;
+	private float mPaddleSpeedX = 0;
+	
+	private float mMinDistanceBetweenRedBallAndBigBall = 0;
 
 	//This is run before anything else, so we can prepare things here
 	public TheGame(GameView gameView) {
@@ -26,20 +33,32 @@ public class TheGame extends GameThread{
 		//Prepare the image so we can draw it on the screen (using a canvas)
 		mBall = BitmapFactory.decodeResource
 				(gameView.getContext().getResources(), 
-				R.drawable.small_red_ball);
+				R.drawable.james_ball);
+		
+		//Prepare the paddle image
+		mPaddle = BitmapFactory.decodeResource
+				(gameView.getContext().getResources(), 
+				R.drawable.yellow_ball);
+
 	}
 	
 	//This is run before a new game (also after an old game)
 	@Override
 	public void setupBeginning() {
 		//Initialise speeds
-		mBallSpeedX = 0; 
-		mBallSpeedY = 0;
+		mBallSpeedX = -200; 
+		mBallSpeedY = -200;
 		
 		//Place the ball in the middle of the screen.
 		//mBall.Width() and mBall.getHeigh() gives us the height and width of the image of the ball
 		mBallX = mCanvasWidth / 2;
 		mBallY = mCanvasHeight / 2;
+		
+		//Place the paddle in the center bottom of the screen
+		mPaddleX = mCanvasWidth / 2;
+		
+		//Calculate distance for collision (squared to avoid sqrt later)
+		mMinDistanceBetweenRedBallAndBigBall = (mBall.getWidth()/2 + mPaddle.getWidth()/2) * (mBall.getWidth()/2 + mPaddle.getWidth()/2);
 	}
 
 	@Override
@@ -54,15 +73,17 @@ public class TheGame extends GameThread{
 		//drawBitmap uses top left corner as reference, we use middle of picture
 		//null means that we will use the image without any extra features (called Paint)
 		canvas.drawBitmap(mBall, mBallX - mBall.getWidth() / 2, mBallY - mBall.getHeight() / 2, null);
+
+		//draw the image of the paddle on the screen
+		canvas.drawBitmap(mPaddle, mPaddleX - mPaddle.getWidth()/2, mCanvasHeight - mPaddle.getHeight()/2, null);
 	}
 	
 	//This is run whenever the phone is touched by the user
 	
 	@Override
 	protected void actionOnTouch(float x, float y) {
-		//Increase/decrease the speed of the ball making the ball move towards the touch
-		mBallSpeedX = (x - mBallX);
-		mBallSpeedY = (y - mBallY);
+		//Move the paddle
+		mPaddleX = x - mPaddle.getWidth()/2;
 
 	}
 	
@@ -72,16 +93,52 @@ public class TheGame extends GameThread{
 	
 	@Override
 	protected void actionWhenPhoneMoved(float xDirection, float yDirection, float zDirection) {
-		//Increase/decrease the speed of the ball
-		mBallSpeedX = mBallSpeedX - 1.2f * xDirection;
-		mBallSpeedY = mBallSpeedY - 1.2f * yDirection;
+		//Move the paddle if it's on the screen
+		if (mPaddleX>=0 && mPaddleX<=mCanvasWidth) {
+		  mPaddleX = mPaddleX - xDirection;
+		  
+		  if (mPaddleX<0) mPaddleX=0;
+		  if (mPaddleX>mCanvasWidth) mPaddleX=mCanvasWidth;
+		}
 	}
 	
 	
 	//This is run just before the game "scenario" is printed on the screen
 	@Override
 	protected void updateGame(float secondsElapsed) {
+		float distanceBetweenBallAndPaddle;
 		
+		if (mBallSpeedY > 0) {
+			distanceBetweenBallAndPaddle = (mPaddleX - mBallX) * (mPaddleX - mBallX) + (mCanvasHeight - mBallY) * (mCanvasHeight - mBallY);
+			if (distanceBetweenBallAndPaddle <= mMinDistanceBetweenRedBallAndBigBall) {
+				float velocityOfBall = (float) Math.sqrt(mBallSpeedX*mBallSpeedX + mBallSpeedY*mBallSpeedY);
+
+				mBallSpeedX = mBallX-mPaddleX;
+				mBallSpeedY = mBallY-mCanvasHeight;
+				
+				float newVelocity = (float) Math.sqrt(mBallSpeedX*mBallSpeedX + mBallSpeedY*mBallSpeedY);
+				
+				mBallSpeedX = mBallSpeedX * velocityOfBall/newVelocity;
+				mBallSpeedY = mBallSpeedY * velocityOfBall/newVelocity;
+				
+				updateScore(1);
+			}
+		}
+		//Check whether the ball is touching the edge of the screen and
+		//whether it is moving off or not
+		if ((mBallX <= mBall.getWidth()/2 && mBallSpeedX<0)|| (mBallX >= mCanvasWidth-mBall.getWidth()/2 && mBallSpeedX>0)) {
+			mBallSpeedX = -mBallSpeedX;
+		}
+		//Check whether the ball is touching the top of the screen and
+		//whether it is moving off or not
+		if ((mBallY <= mBall.getHeight()/2 && mBallSpeedY<0)) {
+			mBallSpeedY = -mBallSpeedY;
+		}
+		
+		if (mBallY >= mCanvasHeight-mBall.getHeight()/2 && mBallSpeedY>0) {
+			setState(GameThread.STATE_LOSE);
+		}
+
 		//Move the ball's X and Y using the speed (pixel/sec)
 		mBallX = mBallX + secondsElapsed * mBallSpeedX;
 		mBallY = mBallY + secondsElapsed * mBallSpeedY;
